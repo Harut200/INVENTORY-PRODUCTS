@@ -1,3 +1,4 @@
+# Imports and DB Path
 import json
 import sqlite3
 import requests
@@ -5,13 +6,16 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-DB_PATH = Path("../Data/DB/EXAM.db")
+DB_PATH = Path("../Data/DB/INVENTORY_PRODUCTS.db")
 
+
+# Load Data products
 prod_raw = pd.read_csv(
     Path.cwd().parent / "Data" / "Row" / "products_noisy.csv"
 )
 
 
+# Data cleaning (products)
 prod_raw["ProductID"] = range(101, len(prod_raw) + 101)
 
 prod_raw["ProductName"] = [f"Product_{i}" for i in range(1, 1001)]
@@ -22,12 +26,14 @@ prod_raw["Price"] = prod_raw["Price"].mask(prod_raw["Price"] <= 0, prod_raw["Pri
 
 
 
-
+# Load Data inventory
 inv_raw = pd.read_csv(
     Path.cwd().parent / "Data" / "Row" / "inventory_noisy.csv"
 )
 inv_raw
 
+
+# Data cleaning (inventory)
 inv_raw["ProductID"] = range(101, len(inv_raw) + 101)
 
 inv_raw["InventoryID"] = range(1, len(inv_raw) + 1)
@@ -36,12 +42,12 @@ inv_raw["WarehouseCode"] = inv_raw["WarehouseCode"].fillna(inv_raw["WarehouseCod
 
 inv_raw["StockLevel"] = inv_raw["StockLevel"].fillna(inv_raw["StockLevel"].median())
 
-inv_raw.to_csv(Path.cwd().parent / "Data" / "Processed" / "investory_levels.csv")
+inv_raw.to_csv(Path.cwd().parent / "Data" / "Processed" / "inventory_levels.csv")
 
 prod_raw.to_csv(Path.cwd().parent / "Data" / "Processed" / "products.csv")
 
 
-
+# DB Creation
 conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
 cur.execute(
@@ -57,7 +63,7 @@ cur.execute(
 
 cur.execute(
     """
-    CREATE TABLE IF NOT EXISTS investory(
+    CREATE TABLE IF NOT EXISTS inventory(
     InventoryID INTEGER PRIMARY KEY,
     ProductID INTEGER REFERENCES products (ProductID),
     WarehouseCode TEXT,
@@ -79,9 +85,13 @@ cur.execute(
 
 conn.commit()
 
-prod_raw.to_sql("products", conn, if_exists="replace", index=False)
-inv_raw.to_sql("investory", conn, if_exists="replace", index=False)
 
+# SQL Insert
+prod_raw.to_sql("products", conn, if_exists="replace", index=False)
+inv_raw.to_sql("inventory", conn, if_exists="replace", index=False)
+
+
+# SQL Tasks
 cur.execute(
     """
     CREATE TRIGGER IF NOT EXISTS UpdateStockAfterSale
